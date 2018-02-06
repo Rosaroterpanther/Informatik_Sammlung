@@ -1,0 +1,157 @@
+#!/usr/bin/env perl
+
+# VERSION 1.0
+
+# Creator: stairf
+
+use warnings;
+use strict;
+
+# global definitions
+our $MEMSIZE = 1*1024*1024;
+our $MBLOCKSIZE = 16;
+
+sub getHeight {
+	# TODO: get a suitable image height for a memory chunk of size $len, where
+	# each mblock has size 1. A size below one will look broken.
+	my ($area) = @_;
+	my $scale = 5;
+	return 2 + $scale * ($area->{size}-$MBLOCKSIZE)/$MEMSIZE if $area->{used};
+	return 1 + $scale * $area->{size}/$MEMSIZE;
+}
+
+# get input file
+defined $ARGV[0] or die "usage: $0 <input>\n";
+my $basename = "$ARGV[0]";
+
+# open input file
+open my $IN, "<$basename" or die "failed to read '$basename': $!\n";
+
+# create tex header
+die "file $basename.tex exists. please remove or rename it\n" if ( -e "$basename.tex");
+open my $TEX, ">$basename.tex" or die "failed to create file '$basename.tex': $!\n";
+print $TEX "\\documentclass[tikz,border=1cm]{standalone}\\usepackage{tikz}\\usetikzlibrary{calc,arrows}\n";
+print $TEX "\\begin{document}\n\\begin{tikzpicture}\n";
+
+# start at x=0, each line results in one heap image
+my $x = 0;
+while (my $line = <$IN>) {
+
+	$line =~ s/^\s*//;
+	$line =~ s/\s*$//;
+	next if $line =~ /^#/ or not $line;
+	# parse mblocks from line
+	my @mblocks = ();
+	for (split "-->", $line) {
+		if ( /\(addr:\s+0x([0-9a-z]+),\s+off:\s+(\d+),\s+size:\s+(\d+)\)/ ) {
+			my $addr = $1;
+			my $offset = $2;
+			my $size = $3;
+			#print STDERR "mblock: addr=$addr, offset=$offset, size=$size\n";
+			push @mblocks, { addr => $addr, offset => $offset, size => $size };
+		} else {
+			last;
+		}
+	}
+
+	# find head and add prev/next pointers
+	my $prev = undef;
+	my $head = $mblocks[0];
+	for my $mblock (@mblocks) {
+		$mblock->{offset} //= 0;
+		$mblock->{prev} = $prev;
+		$prev->{next} = $mblock;
+		$prev = $mblock;
+	}
+
+	# sort mblocks by offset
+	@mblocks = sort { $a->{offset} <=> $b->{offset} } @mblocks;
+
+	# generate areas, which are either used or free
+	my @areas;
+	my $offset = 0 ;
+	for my $mblock (@mblocks) {
+		if ($mblock->{offset} < $offset) {
+			die "overlapping blocks found\n";
+		} elsif ($mblock->{offset} != $offset) {
+			push @areas, { offset => $offset, used => 1, size => ($mblock->{offset} - $offset), prev => 0 };
+			$offset = $mblock->{offset};
+		}
+		push @areas, $mblock;
+		$offset = $mblock->{offset} + $mblock->{size} + $MBLOCKSIZE;
+	}
+	if ($offset != $MEMSIZE) {
+		push @areas, { offset => "offset", used => 1, size => ($MEMSIZE - $offset) };
+	}
+
+	# calculate area height
+	for my $area (@areas) {
+		$area->{height} = getHeight($area);
+	}
+
+#	print "$_->{offset} size=$_->{size} " . ($_->{used} ? "used" : "free") . "\n" for (@areas);
+
+	# draw heap state
+	my $y = 0;
+	my %color = (
+		block => "gray",
+		usedarea  => "red",
+		freearea  => "green",
+	);
+
+	# draw area
+	for my $a (@areas) {
+		$a->{y} = $y;
+		my $height = $a->{height};
+		my $size = $a->{size};
+		my $areacol  = $a->{used} ? $color{usedarea} : $color{freearea};
+		if (!$a->{used}) {
+			print $TEX "\\draw[fill=$color{block}] ($x,$y) rectangle ++(2,1);\n";
+			$y++;
+		}
+		print $TEX "\\draw[fill=$areacol] ($x,$y) rectangle ++(2,$height);\n";
+		print $TEX "\\node at (" . ($x+1) . "," . ($y+$height/2) .") { $size };\n";
+		$y += $height;
+	}
+
+	# draw arrows for list
+	my $arrowx = $x + 3;
+	my $a = $head;
+	if (defined $a) {
+		print $TEX "\\node (HEAD) at (" . ($x-2) . ",$a->{y}) { HEAD };\n";
+		print $TEX "\\draw[ultra thick,->] (HEAD) -- ($x,$a->{y});\n";
+	}
+	while ($a) {
+		my $starty = $a->{y} + 0.5;
+		if ($a->{next}) {
+			my $toy = $a->{next}->{y};
+			print $TEX "\\draw[rounded corners,ultra thick,o->] (". ($x+1) . ",$starty) -- ($arrowx,$starty) -- ($arrowx,$toy) -- (" . ($x+2) .",$toy);\n";
+			$arrowx += 0.5;
+		} else {
+			print $TEX "\\node at (" . ($x+1) . ",$starty) { END };\n";
+		}
+		$a = $a->{next};
+	}
+
+	# shift $x for next graph
+	$x = $arrowx + 3;
+}
+
+#end tex file
+print $TEX "\\end{tikzpicture}\n\\end{document}\n\n";
+close $TEX;
+close $IN;
+
+# run pdflatex to generate pdf output
+close STDOUT;
+system "pdflatex", "-interaction=batchmode", "$basename.tex";
+if ($? == -1) {
+	die "failed to run pdflatex: $!\n";
+} elsif ( $? & 127 ) {
+	die "pdflatex crashed with signal " . ($?&127) . "\n";
+} elsif ($?) {
+	die "pdflatex exited with status " . ($?>>8) . "\n";
+}
+
+# remove tex file
+unlink "$basename.tex" or die "failed to remove $basename.tex: $!\n";
