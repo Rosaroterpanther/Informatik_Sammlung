@@ -40,5 +40,23 @@ int main(int argc, char *argv[]) {
 	free(menomem);
 	printList();
 
+	char* m1 = malloc(200*1024);
+	printList();
+	char* m2 = malloc(200*1024);
+	printList();
+	char* m3 = malloc(200*1024);
+	printList();
+	char* m4 = malloc(200*1024);
+	printList();
+
+	free(m1);
+	printList();
+	free(m2);
+	printList();
+	free(m3);
+	printList();
+	free(m4);
+	printList();
+	
 	exit(EXIT_SUCCESS);
 }

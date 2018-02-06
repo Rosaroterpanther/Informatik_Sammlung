@@ -4,3 +4,8 @@
 # Ignore runnable files
 Systemprogrammierung/Sp1/00-lilo/lilo
 Systemprogrammierung/Sp1/01-wsort/wsort
+Systemprogrammierung/Sp1/002-halde/test
+
+# Ignore other created files
+Systemprogrammierung/Sp1/002-halde/sample
+Systemprogrammierung/Sp1/002-halde/sample.tex

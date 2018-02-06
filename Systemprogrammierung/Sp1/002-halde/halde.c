@@ -12,11 +12,11 @@
 #define SIZE (1024*1024*1)
 
 /// Memory-chunk structure.
-struct mblock {
+typedef struct mblock {
 	struct mblock *next;
 	size_t size;
 	char memory[];
-};
+} mblock;
 
 /// Heap-memory area.
 static char memory[SIZE];

@@ -21,3 +21,15 @@ Sort method, reads from stdin and prints on stdout
 
 How to use:
 ''' ./wsort <$input-file >output-file '''
+
+#### Halde
+Recreation of the system functions malloc / free / realloc /calloc
+
+How to use (Run Test-Cases):
+''' ./test '''
+
+How to use with visualise:
+''' ./test 2> sample '''
+''' cd Visualisierung/ '''
+''' ./visualise ../sample '''
+Open sample.pdf
