@@ -5,8 +5,15 @@
 Systemprogrammierung/Sp1/00-lilo/lilo
 Systemprogrammierung/Sp1/01-wsort/wsort
 Systemprogrammierung/Sp1/02-halde/test
+Systemprogrammierung/Sp1/03-clash/clash
+Systemprogrammierung/Sp1/04-piper/piper
+Systemprogrammierung/Sp1/05-crawl/crawl
+
 
 # Ignore other created files
 Systemprogrammierung/Sp1/02-halde/sample
 Systemprogrammierung/Sp1/02-halde/sample.tex
 Systemprogrammierung/Sp1/02-halde/sample.pdf
+
+# Ignore Additional files folder
+Systemprogrammierung/Sp1/04-piper/interior
